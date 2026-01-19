@@ -27,10 +27,12 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-white overflow-hidden selection:bg-emerald-100">
+    // ALTERAÇÃO AQUI: Trocado 'h-screen' por 'min-h-screen' e removido 'overflow-hidden'
+    // Isso permite que o conteúdo cresça e a barra de rolagem apareça em celulares pequenos
+    <div className="min-h-screen flex flex-col bg-white selection:bg-emerald-100">
       <Header />
       
-      <main className="flex-grow w-full max-w-md mx-auto px-6 flex flex-col justify-center py-2">
+      <main className="flex-grow w-full max-w-md mx-auto px-6 flex flex-col justify-center py-8">
         {status !== FormStatus.SUCCESS ? (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="mb-4 text-center">
