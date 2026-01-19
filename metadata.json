@@ -1,0 +1,7 @@
+{
+  "name": "Dados para CTNB",
+  "description": "Uma plataforma moderna e responsiva de captura de leads com validação robusta, design minimalista e pronta para integrações comerciais.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
