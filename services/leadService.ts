@@ -57,8 +57,12 @@ export class LeadService {
       // 1. Upload do Documento (se existir)
       let documentLink = "Nenhum documento anexado.";
       
-      if (data.documento) {
-        documentLink = await this.uploadToCloudinary(data.documento);
+      if (data.documento && data.documento.length > 0) {
+        const links = [];
+        for (const doc of data.documento) {
+          links.push(await this.uploadToCloudinary(doc));
+        }
+        documentLink = links.join('\n');
       }
 
       // 2. Envio dos dados

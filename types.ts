@@ -5,7 +5,7 @@ export interface LeadData {
   email: string;
   telefone: string;
   revendedor: 'JF' | 'Nogueira' | '';
-  documento: File | null;
+  documento: File[];
   aceite_privacidade: boolean;
 }
 

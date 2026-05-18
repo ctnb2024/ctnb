@@ -18,11 +18,11 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
     email: '',
     telefone: '',
     revendedor: '',
-    documento: null,
+    documento: [],
     aceite_privacidade: false
   });
 
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<FormStatus>(FormStatus.IDLE);
@@ -33,9 +33,9 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
   // Cleanup da URL de preview para evitar vazamento de memória
   useEffect(() => {
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
     };
-  }, [previewUrl]);
+  }, [previewUrls]);
 
   const validateField = useCallback((name: string, value: any) => {
     let error = '';
@@ -58,7 +58,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
         else if (cleanPhone.length < 10) error = 'Telefone incompleto';
         break;
       case 'documento':
-        if (!sendWithoutPhoto && !value) error = 'Arquivo obrigatório';
+        if (!sendWithoutPhoto && (!value || value.length === 0)) error = 'Arquivo obrigatório';
         break;
       case 'revendedor':
         if (!value) error = 'Selecione um';
@@ -107,7 +107,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
       LeadService.validateEmail(formData.email) &&
       formData.telefone.replace(/\D/g, '').length >= 10 &&
       formData.revendedor !== '' &&
-      (formData.documento !== null || sendWithoutPhoto) &&
+      (formData.documento.length > 0 || sendWithoutPhoto) &&
       formData.aceite_privacidade
     );
   }, [formData, sendWithoutPhoto]);
@@ -139,21 +139,29 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // VALIDAÇÃO DE TAMANHO: Limite de 4MB para garantir envio seguro
-      if (file.size > 4 * 1024 * 1024) {
-        alert("O arquivo selecionado é muito grande (maior que 4MB). Por favor, selecione uma imagem menor para garantir o envio.");
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      if (formData.documento.length + files.length > 2) {
+        alert("Você pode enviar no máximo 2 fotos.");
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
 
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      setFormData(p => ({ ...p, documento: file }));
+      for (const file of files) {
+        if (file.size > 4 * 1024 * 1024) {
+          alert("Um dos arquivos é muito grande (maior que 4MB). Por favor, selecione fotos menores.");
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          return;
+        }
+      }
+
+      const newUrls = files.map(f => URL.createObjectURL(f));
+      const newFiles = [...formData.documento, ...files];
+
+      setPreviewUrls(prev => [...prev, ...newUrls]);
+      setFormData(p => ({ ...p, documento: newFiles }));
       setTouched(prev => ({ ...prev, documento: true }));
-      validateField('documento', file);
+      validateField('documento', newFiles);
       if (status === FormStatus.ERROR) {
         setStatus(FormStatus.IDLE);
         setErrorMessage(null);
@@ -161,13 +169,17 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
     }
   };
 
-  const clearFile = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
-    setFormData(p => ({ ...p, documento: null }));
+  const clearFile = (index: number) => {
+    const newFiles = formData.documento.filter((_, i) => i !== index);
+    const newUrls = previewUrls.filter((_, i) => i !== index);
+    
+    URL.revokeObjectURL(previewUrls[index]);
+    
+    setPreviewUrls(newUrls);
+    setFormData(p => ({ ...p, documento: newFiles }));
+    
     if (fileInputRef.current) fileInputRef.current.value = '';
-    validateField('documento', null);
+    validateField('documento', newFiles);
   };
 
   const inputClasses = (name: string) => `
@@ -248,30 +260,38 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
             {touched.documento && errors.documento && <span className="text-red-500 lowercase font-bold">{errors.documento}</span>}
           </label>
           <div 
-            onClick={() => !formData.documento && !sendWithoutPhoto && fileInputRef.current?.click()}
+            onClick={() => formData.documento.length < 2 && !sendWithoutPhoto && fileInputRef.current?.click()}
             className={`
-              relative w-full h-32 rounded-3xl border-2 border-dashed flex items-center justify-center transition-all overflow-hidden
-              ${(formData.documento || sendWithoutPhoto) ? 'border-emerald-400 bg-emerald-50' : touched.documento && errors.documento ? 'border-red-400 bg-red-50' : 'border-slate-100 bg-slate-50 hover:bg-white hover:border-[#001b3a]'}
+              relative w-full min-h-32 p-3 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden
+              ${(formData.documento.length > 0 || sendWithoutPhoto) ? 'border-emerald-400 bg-emerald-50' : touched.documento && errors.documento ? 'border-red-400 bg-red-50' : 'border-slate-100 bg-slate-50 hover:bg-white hover:border-[#001b3a]'}
               ${shakeField === 'documento' ? 'animate-shake border-red-400' : ''}
-              ${!formData.documento && !sendWithoutPhoto ? 'cursor-pointer group' : ''}
+              ${formData.documento.length < 2 && !sendWithoutPhoto ? 'cursor-pointer group' : ''}
             `}
           >
-            {previewUrl ? (
-              <div className="relative w-full h-full flex items-center justify-center p-2">
-                <img src={previewUrl} alt="Preview Documento" className="h-full w-auto object-contain rounded-xl shadow-lg" />
-                
-                <button 
-                  type="button"
-                  onClick={clearFile}
-                  className="absolute top-2 right-2 w-8 h-8 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-md text-red-500 hover:bg-red-500 hover:text-white transition-all z-10"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#001b3a]/80 backdrop-blur-md rounded-full">
-                   <span className="text-[8px] font-black text-white uppercase tracking-widest">
-                     Imagem Capturada
-                   </span>
-                </div>
+            {formData.documento.length > 0 ? (
+              <div className="w-full flex items-center justify-center gap-3 flex-wrap">
+                {previewUrls.map((url, idx) => (
+                  <div key={url} className="relative w-24 h-24">
+                    <img src={url} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover rounded-xl shadow-lg" />
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); clearFile(idx); }}
+                      className="absolute -top-2 -right-2 w-7 h-7 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-md text-red-500 hover:bg-red-500 hover:text-white transition-all z-10"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                    <div className="absolute bottom-1 w-full text-center">
+                       <span className="px-2 py-0.5 bg-[#001b3a]/80 backdrop-blur-md rounded-full text-[8px] font-black text-white uppercase tracking-widest">
+                         Foto {idx + 1}
+                       </span>
+                    </div>
+                  </div>
+                ))}
+                {formData.documento.length < 2 && (
+                  <div className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-emerald-400 rounded-xl cursor-pointer hover:bg-emerald-100/50 transition-colors">
+                     <span className="text-[10px] font-black text-emerald-600 uppercase">Adicionar</span>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center">
@@ -289,6 +309,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
             )}
             <input 
               type="file" 
+              multiple
               ref={fileInputRef} 
               onChange={handleFileChange}
               accept="image/*" 
@@ -306,7 +327,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
                 setSendWithoutPhoto(checked);
                 if (checked) {
                   setErrors(prev => ({ ...prev, documento: '' }));
-                } else if (!formData.documento && touched.documento) {
+                } else if (formData.documento.length === 0 && touched.documento) {
                   setErrors(prev => ({ ...prev, documento: 'Arquivo obrigatório' }));
                 }
               }}
