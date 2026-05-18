@@ -309,7 +309,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
             )}
             <input 
               type="file" 
-              multiple
               ref={fileInputRef} 
               onChange={handleFileChange}
               accept="image/*" 
