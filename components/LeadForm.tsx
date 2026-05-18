@@ -9,7 +9,8 @@ interface LeadFormProps {
 }
 
 const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const honeypotRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<LeadData>({
@@ -143,14 +144,16 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
     if (files.length > 0) {
       if (formData.documento.length + files.length > 2) {
         alert("Você pode enviar no máximo 2 fotos.");
-        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
+        if (galleryInputRef.current) galleryInputRef.current.value = '';
         return;
       }
 
       for (const file of files) {
         if (file.size > 4 * 1024 * 1024) {
           alert("Um dos arquivos é muito grande (maior que 4MB). Por favor, selecione fotos menores.");
-          if (fileInputRef.current) fileInputRef.current.value = '';
+          if (cameraInputRef.current) cameraInputRef.current.value = '';
+          if (galleryInputRef.current) galleryInputRef.current.value = '';
           return;
         }
       }
@@ -178,7 +181,8 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
     setPreviewUrls(newUrls);
     setFormData(p => ({ ...p, documento: newFiles }));
     
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
     validateField('documento', newFiles);
   };
 
@@ -259,13 +263,10 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
             Documento (Foto)
             {touched.documento && errors.documento && <span className="text-red-500 lowercase font-bold">{errors.documento}</span>}
           </label>
-          <div 
-            onClick={() => formData.documento.length < 2 && !sendWithoutPhoto && fileInputRef.current?.click()}
-            className={`
+          <div className={`
               relative w-full min-h-32 p-3 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden
-              ${(formData.documento.length > 0 || sendWithoutPhoto) ? 'border-emerald-400 bg-emerald-50' : touched.documento && errors.documento ? 'border-red-400 bg-red-50' : 'border-slate-100 bg-slate-50 hover:bg-white hover:border-[#001b3a]'}
+              ${(formData.documento.length > 0 || sendWithoutPhoto) ? 'border-emerald-400 bg-emerald-50' : touched.documento && errors.documento ? 'border-red-400 bg-red-50' : 'border-slate-100 bg-slate-50'}
               ${shakeField === 'documento' ? 'animate-shake border-red-400' : ''}
-              ${formData.documento.length < 2 && !sendWithoutPhoto ? 'cursor-pointer group' : ''}
             `}
           >
             {formData.documento.length > 0 ? (
@@ -287,29 +288,59 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
                     </div>
                   </div>
                 ))}
-                {formData.documento.length < 2 && (
-                  <div className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-emerald-400 rounded-xl cursor-pointer hover:bg-emerald-100/50 transition-colors">
-                     <span className="text-[10px] font-black text-emerald-600 uppercase">Adicionar</span>
+                {formData.documento.length < 2 && !sendWithoutPhoto && (
+                  <div className="flex flex-col gap-1 w-24 h-24 border-2 border-dashed border-emerald-400 rounded-xl overflow-hidden shadow-sm">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); cameraInputRef.current?.click(); }} className="w-full flex-1 flex items-center justify-center bg-white text-[9px] font-black text-[#001b3a] uppercase hover:bg-slate-50 transition-colors">Câmera</button>
+                    <div className="w-full h-px bg-emerald-100"></div>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); galleryInputRef.current?.click(); }} className="w-full flex-1 flex items-center justify-center bg-[#001b3a] text-white text-[9px] font-black uppercase hover:bg-[#001b3a]/90 transition-colors">Galeria</button>
                   </div>
                 )}
               </div>
             ) : (
               <div className="flex flex-col items-center">
-                <div className={`w-10 h-10 ${sendWithoutPhoto ? 'bg-emerald-500' : 'bg-white'} rounded-full flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform`}>
+                <div className={`w-10 h-10 ${sendWithoutPhoto ? 'bg-emerald-500' : 'bg-white border hover:scale-105 border-slate-200'} rounded-full flex items-center justify-center shadow-sm mb-3 transition-transform z-10 relative`}>
                   {sendWithoutPhoto ? (
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
                   ) : (
                     <svg className="w-5 h-5 text-[#001b3a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
                   )}
                 </div>
-                <span className={`text-[9px] font-black ${sendWithoutPhoto ? 'text-emerald-600' : 'text-slate-400'} uppercase tracking-wider`}>
-                  {sendWithoutPhoto ? 'Envio sem foto' : 'Câmera ou Galeria'}
-                </span>
+                
+                {sendWithoutPhoto ? (
+                  <span className="text-[9px] font-black text-emerald-600 uppercase tracking-wider">
+                    Envio sem foto
+                  </span>
+                ) : (
+                  <div className="flex gap-2">
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); cameraInputRef.current?.click(); }} 
+                      className="px-4 py-2 bg-white border-2 border-[#001b3a] text-[#001b3a] rounded-xl text-[10px] items-center justify-center font-black uppercase tracking-wider shadow-sm flex hover:bg-slate-50 transition-colors cursor-pointer z-10 relative"
+                    >
+                      Câmera
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); galleryInputRef.current?.click(); }} 
+                      className="px-4 py-2 bg-[#001b3a] border-2 border-[#001b3a] text-white rounded-xl text-[10px] items-center justify-center font-black uppercase tracking-wider shadow-sm flex hover:bg-[#001b3a]/90 transition-colors cursor-pointer z-10 relative"
+                    >
+                      Galeria
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             <input 
               type="file" 
-              ref={fileInputRef} 
+              ref={cameraInputRef} 
+              onChange={handleFileChange}
+              accept="image/*"
+              capture="environment"
+              className="hidden" 
+            />
+            <input 
+              type="file" 
+              ref={galleryInputRef} 
               onChange={handleFileChange}
               accept="image/*" 
               className="hidden" 
