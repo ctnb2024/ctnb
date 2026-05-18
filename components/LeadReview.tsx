@@ -20,7 +20,6 @@ const LeadReview: React.FC<LeadReviewProps> = ({ data, onConfirm, onEdit, isSubm
     }
   }, [data.documento]);
 
-  const isPdf = data.documento?.type === 'application/pdf';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-[#001b3a]/60 backdrop-blur-sm animate-in fade-in duration-300">
@@ -70,20 +69,26 @@ const LeadReview: React.FC<LeadReviewProps> = ({ data, onConfirm, onEdit, isSubm
 
             <div className="bg-slate-50 p-4 rounded-3xl flex items-center gap-4 border border-slate-100">
               <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm overflow-hidden border border-slate-200 shrink-0">
-                {thumbUrl && !isPdf ? (
+                {thumbUrl ? (
                   <img src={thumbUrl} alt="Thumbnail" className="w-full h-full object-cover" />
                 ) : (
-                  <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
                 )}
               </div>
               <div className="flex-grow min-w-0">
                 <p className="text-[10px] font-black text-slate-400 uppercase">Documento Seguro</p>
-                <p className="text-xs font-bold text-slate-600 truncate">{data.documento?.name || 'documento'}</p>
+                <p className="text-xs font-bold text-slate-600 truncate">{data.documento ? data.documento.name : 'Envio sem documento'}</p>
               </div>
               <div className="text-right shrink-0">
-                <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100 uppercase">
-                  {isPdf ? 'PDF OK' : 'IMG OK'}
-                </span>
+                {data.documento ? (
+                  <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100 uppercase">
+                    IMG OK
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-full border border-slate-200 uppercase">
+                    SEM FOTO
+                  </span>
+                )}
               </div>
             </div>
           </div>

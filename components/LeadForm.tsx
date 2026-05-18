@@ -28,6 +28,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
   const [status, setStatus] = useState<FormStatus>(FormStatus.IDLE);
   const [shakeField, setShakeField] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [sendWithoutPhoto, setSendWithoutPhoto] = useState<boolean>(false);
 
   // Cleanup da URL de preview para evitar vazamento de memória
   useEffect(() => {
@@ -57,7 +58,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
         else if (cleanPhone.length < 10) error = 'Telefone incompleto';
         break;
       case 'documento':
-        if (!value) error = 'Arquivo obrigatório';
+        if (!sendWithoutPhoto && !value) error = 'Arquivo obrigatório';
         break;
       case 'revendedor':
         if (!value) error = 'Selecione um';
@@ -68,7 +69,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
     }
     setErrors(prev => ({ ...prev, [name]: error }));
     return !error;
-  }, []);
+  }, [sendWithoutPhoto]);
 
   const applyPhoneMask = (value: string) => {
     const numbers = value.replace(/\D/g, '');
@@ -106,10 +107,10 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
       LeadService.validateEmail(formData.email) &&
       formData.telefone.replace(/\D/g, '').length >= 10 &&
       formData.revendedor !== '' &&
-      formData.documento !== null &&
+      (formData.documento !== null || sendWithoutPhoto) &&
       formData.aceite_privacidade
     );
-  }, [formData]);
+  }, [formData, sendWithoutPhoto]);
 
   const triggerShake = (fieldName: string) => {
     setShakeField(fieldName);
@@ -142,7 +143,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
     if (file) {
       // VALIDAÇÃO DE TAMANHO: Limite de 4MB para garantir envio seguro
       if (file.size > 4 * 1024 * 1024) {
-        alert("O arquivo selecionado é muito grande (maior que 4MB). Por favor, selecione uma imagem ou PDF menor para garantir o envio.");
+        alert("O arquivo selecionado é muito grande (maior que 4MB). Por favor, selecione uma imagem menor para garantir o envio.");
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
@@ -179,9 +180,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
     ${shakeField === name ? 'animate-shake' : ''}
     disabled:opacity-50
   `;
-
-  // Determina se o arquivo é um PDF para exibição
-  const isPdf = formData.documento?.type === 'application/pdf';
 
   return (
     <>
@@ -243,31 +241,24 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
           </div>
         </div>
 
-        {/* CAMPO DE DOCUMENTO (IMAGEM OU PDF) */}
+        {/* CAMPO DE DOCUMENTO (IMAGEM) */}
         <div className="space-y-1">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex justify-between">
-            Documento (Foto ou PDF)
+            Documento (Foto)
             {touched.documento && errors.documento && <span className="text-red-500 lowercase font-bold">{errors.documento}</span>}
           </label>
           <div 
-            onClick={() => !formData.documento && fileInputRef.current?.click()}
+            onClick={() => !formData.documento && !sendWithoutPhoto && fileInputRef.current?.click()}
             className={`
               relative w-full h-32 rounded-3xl border-2 border-dashed flex items-center justify-center transition-all overflow-hidden
-              ${formData.documento ? 'border-emerald-400 bg-emerald-50' : touched.documento && errors.documento ? 'border-red-400 bg-red-50' : 'border-slate-100 bg-slate-50 hover:bg-white hover:border-[#001b3a]'}
+              ${(formData.documento || sendWithoutPhoto) ? 'border-emerald-400 bg-emerald-50' : touched.documento && errors.documento ? 'border-red-400 bg-red-50' : 'border-slate-100 bg-slate-50 hover:bg-white hover:border-[#001b3a]'}
               ${shakeField === 'documento' ? 'animate-shake border-red-400' : ''}
-              ${!formData.documento ? 'cursor-pointer group' : ''}
+              ${!formData.documento && !sendWithoutPhoto ? 'cursor-pointer group' : ''}
             `}
           >
             {previewUrl ? (
               <div className="relative w-full h-full flex items-center justify-center p-2">
-                {isPdf ? (
-                  <div className="flex flex-col items-center justify-center text-red-500 animate-in zoom-in">
-                    <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 max-w-[150px] truncate">{formData.documento?.name}</span>
-                  </div>
-                ) : (
-                  <img src={previewUrl} alt="Preview Documento" className="h-full w-auto object-contain rounded-xl shadow-lg" />
-                )}
+                <img src={previewUrl} alt="Preview Documento" className="h-full w-auto object-contain rounded-xl shadow-lg" />
                 
                 <button 
                   type="button"
@@ -278,25 +269,52 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
                 </button>
                 <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#001b3a]/80 backdrop-blur-md rounded-full">
                    <span className="text-[8px] font-black text-white uppercase tracking-widest">
-                     {isPdf ? 'PDF Anexado' : 'Imagem Capturada'}
+                     Imagem Capturada
                    </span>
                 </div>
               </div>
             ) : (
               <div className="flex flex-col items-center">
-                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform">
-                  <svg className="w-5 h-5 text-[#001b3a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
+                <div className={`w-10 h-10 ${sendWithoutPhoto ? 'bg-emerald-500' : 'bg-white'} rounded-full flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform`}>
+                  {sendWithoutPhoto ? (
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-[#001b3a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
+                  )}
                 </div>
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Câmera ou PDF</span>
+                <span className={`text-[9px] font-black ${sendWithoutPhoto ? 'text-emerald-600' : 'text-slate-400'} uppercase tracking-wider`}>
+                  {sendWithoutPhoto ? 'Envio sem foto' : 'Câmera ou Galeria'}
+                </span>
               </div>
             )}
             <input 
               type="file" 
               ref={fileInputRef} 
               onChange={handleFileChange}
-              accept="image/*,application/pdf" 
+              accept="image/*" 
               className="hidden" 
             />
+          </div>
+          
+          <div className="flex items-center gap-2 mt-3 ml-1 mb-1">
+            <input 
+              type="checkbox" 
+              id="sem_foto"
+              checked={sendWithoutPhoto}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setSendWithoutPhoto(checked);
+                if (checked) {
+                  setErrors(prev => ({ ...prev, documento: '' }));
+                } else if (!formData.documento && touched.documento) {
+                  setErrors(prev => ({ ...prev, documento: 'Arquivo obrigatório' }));
+                }
+              }}
+              className="w-4 h-4 rounded-md border-slate-200 text-[#001b3a] focus:ring-[#001b3a]" 
+            />
+            <label htmlFor="sem_foto" className="text-[10px] font-bold text-slate-500 cursor-pointer uppercase tracking-wider">
+              Enviar sem foto
+            </label>
           </div>
         </div>
 
@@ -328,7 +346,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ onSuccess }) => {
           </div>
         </div>
 
-        <div className={`flex items-start gap-3 p-4 rounded-2xl transition-all border ${touched.aceite_privacidade && errors.aceite_privacidade ? 'bg-red-50 border-red-200 shadow-inner' : 'bg-slate-50 border-transparent'} ${shakeField === 'aceite_privacidade' ? 'animate-shake' : ''}`}>
+        <div className={`flex items-start gap-3 p-4 rounded-2xl transition-all border ${formData.aceite_privacidade ? 'bg-emerald-50 border-emerald-400 shadow-inner' : touched.aceite_privacidade && errors.aceite_privacidade ? 'bg-red-50 border-red-200 shadow-inner' : 'bg-slate-50 border-transparent'} ${shakeField === 'aceite_privacidade' ? 'animate-shake' : ''}`}>
           <input 
             type="checkbox" id="aceite" checked={formData.aceite_privacidade}
             onChange={(e) => {
